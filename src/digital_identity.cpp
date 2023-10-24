@@ -43,6 +43,18 @@ bool DigitalIdentity::SelectRandomWords(size_t count) {
     return true;
 }
 
+bool DigitalIdentity::DeriveSeedFromWords() {
+    std::string joinedWords;
+    for (const std::string& word : selectedWords_) {
+        joinedWords += word;
+    }
+
+    seed_.resize(SHA256_DIGEST_LENGTH);
+    SHA256(reinterpret_cast<const uint8_t*>(joinedWords.c_str()), joinedWords.size(), seed_.data());
+
+    return true;
+}
+
 const std::string& DigitalIdentity::GetPrivateKey() const {
     return privateKey_;
 }
