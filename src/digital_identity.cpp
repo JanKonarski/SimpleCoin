@@ -4,6 +4,7 @@
 #include <openssl/sha.h>
 #include <openssl/bn.h>
 #include <openssl/ec.h>
+#include <random>
 
 DigitalIdentity::DigitalIdentity(const std::string& wordlistFileName) {
     LoadWordList(wordlistFileName);
@@ -35,8 +36,12 @@ bool DigitalIdentity::SelectRandomWords(size_t count) {
         return false;
     }
 
+    std::random_device rd;
+    std::mt19937 gen(rd());
+    std::uniform_int_distribution<size_t> distribution(0, wordlist_.size() - 1);
+
     while (selectedWords_.size() < count) {
-        size_t randomIndex = rand() % wordlist_.size();
+        size_t randomIndex = distribution(gen);
         selectedWords_.push_back(wordlist_[randomIndex]);
     }
 
