@@ -1,8 +1,9 @@
 #include <string>
-#include "utils.hpp"
 #include "digital_identity.hpp"
+#include "utils.hpp"
 #include <fstream>
 
+CryptoPP::SecByteBlock iv;
 int menu()
 {
     int choice;
@@ -52,7 +53,7 @@ int create_wallet()
     std::string password;
     std::cout << "Enter a password to encrypt the private key: ";
     password = getPassword();
-    if(encryptPrivateKey(privateKey, password, encryptedPrivateKey))
+    if(encryptPrivateKey(privateKey, password, encryptedPrivateKey, iv))
     {
     // Save the encrypted private key to a file
     std::ofstream outputFile("encrypted_private_key.bin", std::ios::binary);

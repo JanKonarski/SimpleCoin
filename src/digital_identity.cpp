@@ -1,10 +1,13 @@
 #include "digital_identity.hpp"
 #include <fstream>
-#include <openssl/rand.h>
-#include <openssl/sha.h>
-#include <openssl/bn.h>
-#include <openssl/ec.h>
-#include <random>
+#include <cryptopp/randpool.h>
+#include <cryptopp/eccrypto.h>
+#include <cryptopp/cryptlib.h>
+#include <cryptopp/eccrypto.h>
+#include <cryptopp/ecp.h>
+#include <cryptopp/hex.h>
+#include <cryptopp/oids.h>
+#include <cryptopp/osrng.h>
 
 DigitalIdentity::DigitalIdentity(const std::string &wordlistFileName)
 {
@@ -13,10 +16,7 @@ DigitalIdentity::DigitalIdentity(const std::string &wordlistFileName)
 
 DigitalIdentity::~DigitalIdentity()
 {
-    if (ecKeyPair_)
-    {
-        EC_KEY_free(ecKeyPair_);
-    }
+
 }
 
 bool DigitalIdentity::LoadWordList(const std::string &filename)
@@ -44,14 +44,13 @@ bool DigitalIdentity::SelectRandomWords(size_t count)
         return false;
     }
 
-    std::random_device rd;
-    std::mt19937 gen(rd());
-    std::uniform_int_distribution<size_t> distribution(0, wordlist_.size() - 1);
+    CryptoPP::AutoSeededRandomPool rng;
+    selectedWords_.resize(count);
 
-    while (selectedWords_.size() < count)
+    for (size_t i = 0; i < count; ++i)
     {
-        size_t randomIndex = distribution(gen);
-        selectedWords_.push_back(wordlist_[randomIndex]);
+        size_t randomIndex = rng.GenerateWord32(0, wordlist_.size() - 1);
+        selectedWords_[i] = wordlist_[randomIndex];
     }
 
     return true;
@@ -65,58 +64,38 @@ bool DigitalIdentity::DeriveSeedFromWords()
         joinedWords += word;
     }
 
-    seed_.resize(SHA256_DIGEST_LENGTH);
-    SHA256(reinterpret_cast<const uint8_t *>(joinedWords.c_str()), joinedWords.size(), seed_.data());
+    CryptoPP::SHA256 sha256;
+    seed_.resize(sha256.DigestSize());
+    sha256.CalculateDigest(seed_, reinterpret_cast<const CryptoPP::byte *>(joinedWords.data()), joinedWords.size());
 
     return true;
 }
 
 bool DigitalIdentity::GenerateECDSAKeyPair()
 {
-    // Create an EC_KEY structure and set it to use the secp256k1 curve (Bitcoin curve)
-    ecKeyPair_ = EC_KEY_new_by_curve_name(NID_secp256k1);
+    CryptoPP::ECDSA<CryptoPP::ECP, CryptoPP::SHA256> ecdsa;
+    
+    CryptoPP::AutoSeededRandomPool rng;
+    CryptoPP::ECDSA<CryptoPP::ECP, CryptoPP::SHA256>::PrivateKey privateKey;
+    privateKey.Initialize(rng, CryptoPP::ASN1::secp256r1());
 
-    // Allocate memory for a BIGNUM to store the private key
-    BIGNUM *privateKey = BN_new();
+    CryptoPP::ECDSA<CryptoPP::ECP, CryptoPP::SHA256>::PublicKey publicKey;
+    privateKey.MakePublicKey(publicKey);
 
-    // Convert the seed data into a BIGNUM private key
-    BN_bin2bn(seed_.data(), static_cast<int>(seed_.size()), privateKey);
+    CryptoPP::ByteQueue queue;
+    privateKey.Save(queue);
+    privateKey_.resize(queue.CurrentSize());
+    queue.Get(reinterpret_cast<CryptoPP::byte*>(&privateKey_[0]), privateKey_.size());
 
-    // Set the private key in the EC_KEY structure
-    EC_KEY_set_private_key(ecKeyPair_, privateKey);
+    queue.Clear();
+    publicKey.Save(queue);
+    publicKey_.resize(queue.CurrentSize());
+    queue.Get(reinterpret_cast<CryptoPP::byte*>(&publicKey_[0]), publicKey_.size());
 
-    // Create an EC_POINT structure to store the public key
-    EC_POINT *publicKeyPoint = EC_POINT_new(EC_KEY_get0_group(ecKeyPair_));
-
-    // Compute the public key point by multiplying the private key with the base point on the curve
-    EC_POINT_mul(EC_KEY_get0_group(ecKeyPair_), publicKeyPoint, privateKey, NULL, NULL, NULL);
-
-    // Set the public key in the EC_KEY structure
-    EC_KEY_set_public_key(ecKeyPair_, publicKeyPoint);
-
-    // Get a const pointer to the private key BIGNUM
-    const BIGNUM *privKeyBN = EC_KEY_get0_private_key(ecKeyPair_);
-
-    // Get a const pointer to the public key EC_POINT
-    const EC_POINT *pubKeyPoint = EC_KEY_get0_public_key(ecKeyPair_);
-
-    // Convert the private key BIGNUM to a hexadecimal string
-    char *privKeyHex = BN_bn2hex(privKeyBN);
-
-    // Convert the public key EC_POINT to a hexadecimal string (uncompressed format)
-    char *pubKeyHex = EC_POINT_point2hex(EC_KEY_get0_group(ecKeyPair_), pubKeyPoint, POINT_CONVERSION_UNCOMPRESSED, NULL);
-
-    // Store the private and public keys as strings in the class
-    privateKey_ = privKeyHex;
-    publicKey_ = pubKeyHex;
-
-    // Free the memory allocated for the temporary hexadecimal strings
-    OPENSSL_free(privKeyHex);
-    OPENSSL_free(pubKeyHex);
-
-    // Return true to indicate successful key pair generation
     return true;
 }
+
+
 
 const std::string &DigitalIdentity::GetPrivateKey() const
 {

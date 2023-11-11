@@ -3,7 +3,10 @@
 
 #include <string>
 #include <vector>
-#include <openssl/ec.h>
+#include <cryptopp/sha.h>
+#include <cryptopp/ecp.h>
+#include <cryptopp/osrng.h>
+#include <cryptopp/eccrypto.h>
 
 class DigitalIdentity
 {
@@ -26,8 +29,9 @@ public:
 private:
     std::vector<std::string> wordlist_;
     std::vector<std::string> selectedWords_;
-    std::vector<uint8_t> seed_;
-    EC_KEY *ecKeyPair_;
+    CryptoPP::SecByteBlock seed_;
+    CryptoPP::ECDSA<CryptoPP::ECP, CryptoPP::SHA256>::PrivateKey ecPrivateKey_;
+    CryptoPP::ECDSA<CryptoPP::ECP, CryptoPP::SHA256>::PublicKey ecPublicKey_;
     std::string privateKey_;
     std::string publicKey_;
 };

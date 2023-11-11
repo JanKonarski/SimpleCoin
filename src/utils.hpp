@@ -2,7 +2,23 @@
 #include <string>
 #include <iostream>
 #include <unistd.h>
-#include <openssl/evp.h>
+#include <iostream>
+#include <string>
+#include <cryptopp/aes.h>
+#include <cryptopp/filters.h>
+#include <cryptopp/gcm.h>
+#include <cryptopp/sha.h>
+#include <cryptopp/secblock.h>
+#include <cryptopp/pwdbased.h>
+
+#include <iostream>
+#include <string>
+#include <cryptopp/aes.h>
+#include <cryptopp/filters.h>
+#include <cryptopp/gcm.h>
+#include <cryptopp/osrng.h>
+#include <cryptopp/secblock.h>
+#include <cryptopp/pwdbased.h>
 
 std::string getPassword()
 {
@@ -25,134 +41,77 @@ std::string getPassword()
     return password;
 }
 
-// Function to encrypt a private key using a password
-bool encryptPrivateKey(const std::string &privateKey, const std::string &password, std::string &encryptedPrivateKey)
-{
-    // Initialize the OpenSSL library
-    OpenSSL_add_all_algorithms();
 
-    // Derive a key from the password
-    const EVP_CIPHER *cipher = EVP_aes_256_cbc();
-    const int keyLength = EVP_CIPHER_key_length(cipher);
-    const int ivLength = EVP_CIPHER_iv_length(cipher);
 
-    unsigned char key[keyLength];
-    unsigned char iv[ivLength];
-
-    if (EVP_BytesToKey(cipher, EVP_sha256(), nullptr,
-                       reinterpret_cast<const unsigned char *>(password.c_str()), password.length(),
-                       1, key, iv) != keyLength)
-    {
-        std::cerr << "Error deriving key." << std::endl;
-        return false;
-    }
-
-    // Create an encryption context
-    EVP_CIPHER_CTX *ctx = EVP_CIPHER_CTX_new();
-    if (!ctx)
-    {
-        std::cerr << "Error creating encryption context." << std::endl;
-        return false;
-    }
-
-    // Initialize the encryption operation
-    if (EVP_EncryptInit_ex(ctx, cipher, nullptr, key, iv) != 1)
-    {
-        std::cerr << "Error initializing encryption." << std::endl;
-        EVP_CIPHER_CTX_free(ctx);
-        return false;
-    }
-
-    // Perform the encryption
-    int ciphertextLen = 0;
-    int maxCiphertextLen = privateKey.length() + EVP_CIPHER_block_size(cipher);
-    encryptedPrivateKey.resize(maxCiphertextLen);
-
-    if (EVP_EncryptUpdate(ctx, reinterpret_cast<unsigned char *>(&encryptedPrivateKey[0]), &ciphertextLen,
-                          reinterpret_cast<const unsigned char *>(privateKey.c_str()), privateKey.length()) != 1)
-    {
-        std::cerr << "Error performing encryption." << std::endl;
-        EVP_CIPHER_CTX_free(ctx);
-        return false;
-    }
-
-    int finalCiphertextLen = 0;
-    if (EVP_EncryptFinal_ex(ctx, reinterpret_cast<unsigned char *>(&encryptedPrivateKey[0]) + ciphertextLen, &finalCiphertextLen) != 1)
-    {
-        std::cerr << "Error finalizing encryption." << std::endl;
-        EVP_CIPHER_CTX_free(ctx);
-        return false;
-    }
-
-    ciphertextLen += finalCiphertextLen;
-    encryptedPrivateKey.resize(ciphertextLen);
-
-    EVP_CIPHER_CTX_free(ctx);
-    return true;
+// Function to generate a random IV
+CryptoPP::SecByteBlock GenerateIV(size_t size) {
+    CryptoPP::SecByteBlock iv(size);
+    CryptoPP::AutoSeededRandomPool rnd;
+    rnd.GenerateBlock(iv, size);
+    return iv;
 }
 
-// Function to decrypt a private key using a password
+bool encryptPrivateKey(const std::string &privateKey, const std::string &password, std::string &encryptedPrivateKey, CryptoPP::SecByteBlock &iv)
+{
+    using namespace CryptoPP;
+
+    try
+    {
+        SecByteBlock key(SHA256::DIGESTSIZE);
+        iv = GenerateIV(AES::BLOCKSIZE);
+
+        PKCS5_PBKDF2_HMAC<SHA256> pbkdf2;
+        pbkdf2.DeriveKey(key, key.size(), 0, reinterpret_cast<const byte *>(password.data()), password.size(), nullptr, 0, 1000);
+
+        GCM<AES>::Encryption encryption;
+        encryption.SetKeyWithIV(key, key.size(), iv, iv.size());
+
+        StringSource ss(privateKey, true,
+            new AuthenticatedEncryptionFilter(encryption,
+                new StringSink(encryptedPrivateKey)
+            )
+        );
+        encryptedPrivateKey = encryptedPrivateKey + ":" + std::string(iv.begin(), iv.end());
+        return true;
+    }
+    catch (const Exception &e)
+    {
+        std::cerr << "Crypto++ Error: " << e.what() << std::endl;
+        return false;
+    }
+}
+
 bool decryptPrivateKey(const std::string &encryptedPrivateKey, const std::string &password, std::string &privateKey)
 {
-    // Initialize the OpenSSL library
-    OpenSSL_add_all_algorithms();
+    using namespace CryptoPP;
 
-    // Derive a key from the password
-    const EVP_CIPHER *cipher = EVP_aes_256_cbc();
-    const int keyLength = EVP_CIPHER_key_length(cipher);
-    const int ivLength = EVP_CIPHER_iv_length(cipher);
-
-    unsigned char key[keyLength];
-    unsigned char iv[ivLength];
-
-    if (EVP_BytesToKey(cipher, EVP_sha256(), nullptr,
-                       reinterpret_cast<const unsigned char *>(password.c_str()), password.length(),
-                       1, key, iv) != keyLength)
+    try
     {
-        std::cerr << "Error deriving key." << std::endl;
+        std::string savedData = encryptedPrivateKey;
+        size_t delimiterPos = savedData.find(":");
+        std::string encryptedPrivateKey = savedData.substr(0, delimiterPos);
+        std::string savedIV = savedData.substr(delimiterPos + 1);
+        CryptoPP::SecByteBlock iv(reinterpret_cast<const byte*>(savedIV.data()), savedIV.size());
+
+        SecByteBlock key(SHA256::DIGESTSIZE);
+
+        PKCS5_PBKDF2_HMAC<SHA256> pbkdf2;
+        pbkdf2.DeriveKey(key, key.size(), 0, reinterpret_cast<const byte *>(password.data()), password.size(), nullptr, 0, 1000);
+
+        GCM<AES>::Decryption decryption;
+        decryption.SetKeyWithIV(key, key.size(), iv, iv.size());
+
+        StringSource ss(encryptedPrivateKey, true,
+            new AuthenticatedDecryptionFilter(decryption,
+                new StringSink(privateKey)
+            )
+        );
+
+        return true;
+    }
+    catch (const Exception &e)
+    {
+        std::cerr << "Crypto++ Error: " << e.what() << std::endl;
         return false;
     }
-
-    // Create a decryption context
-    EVP_CIPHER_CTX *ctx = EVP_CIPHER_CTX_new();
-    if (!ctx)
-    {
-        std::cerr << "Error creating decryption context." << std::endl;
-        return false;
-    }
-
-    // Initialize the decryption operation
-    if (EVP_DecryptInit_ex(ctx, cipher, nullptr, key, iv) != 1)
-    {
-        std::cerr << "Error initializing decryption." << std::endl;
-        EVP_CIPHER_CTX_free(ctx);
-        return false;
-    }
-
-    // Perform the decryption
-    int plaintextLen = 0;
-    int maxPlaintextLen = encryptedPrivateKey.length() + EVP_CIPHER_block_size(cipher);
-    privateKey.resize(maxPlaintextLen);
-
-    if (EVP_DecryptUpdate(ctx, reinterpret_cast<unsigned char *>(&privateKey[0]), &plaintextLen,
-                          reinterpret_cast<const unsigned char *>(encryptedPrivateKey.c_str()), encryptedPrivateKey.length()) != 1)
-    {
-        std::cerr << "Error performing decryption." << std::endl;
-        EVP_CIPHER_CTX_free(ctx);
-        return false;
-    }
-
-    int finalPlaintextLen = 0;
-    if (EVP_DecryptFinal_ex(ctx, reinterpret_cast<unsigned char *>(&privateKey[0]) + plaintextLen, &finalPlaintextLen) != 1)
-    {
-        std::cerr << "Error finalizing decryption." << std::endl;
-        EVP_CIPHER_CTX_free(ctx);
-        return false;
-    }
-
-    plaintextLen += finalPlaintextLen;
-    privateKey.resize(plaintextLen);
-
-    EVP_CIPHER_CTX_free(ctx);
-    return true;
 }
