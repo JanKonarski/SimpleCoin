@@ -1,0 +1,15 @@
+{
+    "inputs": [
+        {
+            "prevTxId": "previousTxId1",
+            "vout": 0,
+            "scriptSig": "scriptSig1"
+        }
+    ],
+    "outputs": [
+        {
+            "value": 10.0,
+            "scriptPubKey": "scriptPubKey1"
+        }
+    ]
+}
