@@ -1,10 +1,8 @@
+#include <boost/json.hpp>
 #include <iostream>
 #include <string>
 #include <vector>
-#include <nlohmann/json.hpp>
 #include <fstream>
-
-using json = nlohmann::json;
 
 class TransactionInput
 {
@@ -103,24 +101,28 @@ Transaction parseTransactionFromJson(const std::string &jsonFilePath)
         throw std::runtime_error("Failed to open JSON file.");
     }
 
-    json jsonData;
-    file >> jsonData;
+    std::string str((std::istreambuf_iterator<char>(file)), std::istreambuf_iterator<char>());
+
+    boost::json::value jv = boost::json::parse(str);
+    boost::json::object jsonData = jv.as_object();
 
     std::vector<TransactionInput> inputs;
     std::vector<TransactionOutput> outputs;
 
-    for (const auto &input : jsonData["inputs"])
+    for (const auto &inputVal : jsonData["inputs"].as_array())
     {
-        std::string prevTxId = input["prevTxId"];
-        int vout = input["vout"];
-        std::string scriptSig = input["scriptSig"];
+        boost::json::object input = inputVal.as_object();
+        std::string prevTxId = input["prevTxId"].as_string().c_str();
+        int vout = input["vout"].as_int64();
+        std::string scriptSig = input["scriptSig"].as_string().c_str();
         inputs.emplace_back(prevTxId, vout, scriptSig);
     }
 
-    for (const auto &output : jsonData["outputs"])
+    for (const auto &outputVal : jsonData["outputs"].as_array())
     {
-        double value = output["value"];
-        std::string scriptPubKey = output["scriptPubKey"];
+        boost::json::object output = outputVal.as_object();
+        double value = output["value"].as_double();
+        std::string scriptPubKey = output["scriptPubKey"].as_string().c_str();
         outputs.emplace_back(value, scriptPubKey);
     }
 
