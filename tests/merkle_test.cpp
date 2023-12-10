@@ -47,5 +47,42 @@ int main()
     {
         // Expected exception
     }
+
+    MerkleTree merkleTree_empty;
+    std::cout << "Merkle Tree before:" << std::endl;
+    merkleTree_empty.printTree();
+    merkleTree_empty.addTransaction("tx1");
+    std::cout << "Merkle Tree after:" << std::endl;
+    merkleTree_empty.printTree();
+
+    // Test verification path
+    try
+    {
+        std::vector<std::string> path = merkleTree_empty.getVerificationPath("tx1");
+        assert(!path.empty());
+        std::cout << "Verification Path for tx5: ";
+        for (const auto &hash : path)
+        {
+            std::cout << hash.substr(0, 8) << " ";
+        }
+        std::cout << std::endl;
+    }
+    catch (const std::runtime_error &e)
+    {
+        std::cout << e.what() << std::endl;
+        assert(false); // Should not reach here
+    }
+
+    // Test for non-existing transaction
+    try
+    {
+        std::vector<std::string> path = merkleTree_empty.getVerificationPath("non_existent_tx");
+        assert(false); // Should not reach here
+    }
+    catch (const std::runtime_error &e)
+    {
+        // Expected exception
+    }
+
     return 0;
 }
