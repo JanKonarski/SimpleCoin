@@ -88,10 +88,10 @@ public:
             block.mineBlock();
 
             // grab transactions from mempool
-            // add them to block
-            // calculate merkle root
-            // add merkle root to block
-            // broadcast block
+                // block.addTransaction(Transaction::parseTransactionFromJson("src/transaction/mempool.json"));
+                // merkle_root = MerkleTree(block.getTransactions()).getRoot();
+                // block.setMerkleRoot(merkle_root);
+            // set block immutable
 
             if (chain.add(block))
                 std::cout << block.toString() << std::endl;
