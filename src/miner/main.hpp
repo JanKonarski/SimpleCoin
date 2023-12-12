@@ -85,7 +85,8 @@ public:
 
             Block block;
             block.setPrehash(chain.getLastHash());
-            block.mineBlock();
+
+            block.mineBlock(); // mine block & check if already mined
 
             // grab transactions from mempool
                 // block.addTransaction(Transaction::parseTransactionFromJson("src/transaction/mempool.json"));
