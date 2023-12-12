@@ -1,149 +1,81 @@
-#include <boost/json.hpp>
 #include <iostream>
 #include <string>
 #include <vector>
 #include <fstream>
 
-class TransactionInput
+struct TransactionOutput
 {
-public:
-    TransactionInput(std::string prevTxId, int vout, std::string scriptSig)
-        : prevTxId(prevTxId), vout(vout), scriptSig(scriptSig) {}
-
-    std::string getPrevTxId() const
-    {
-        return prevTxId;
-    }
-
-    int getVout() const
-    {
-        return vout;
-    }
-
-    std::string getScriptSig() const
-    {
-        return scriptSig;
-    }
-
-private:
-    std::string prevTxId;
-    int vout;
-    std::string scriptSig;
-};
-
-class TransactionOutput
-{
-public:
-    TransactionOutput(double value, std::string scriptPubKey)
-        : value(value), scriptPubKey(scriptPubKey) {}
-
-    double getValue() const
-    {
-        return value;
-    }
-
-    std::string getScriptPubKey() const
-    {
-        return scriptPubKey;
-    }
-
-private:
     double value;
     std::string scriptPubKey;
 };
-
-class Transaction
+struct TransactionInput
 {
-public:
-    Transaction(std::vector<TransactionInput> inputs, std::vector<TransactionOutput> outputs)
-        : inputs(inputs), outputs(outputs) {}
-
-    std::vector<TransactionInput> getInputs() const
-    {
-        return inputs;
-    }
-
-    std::vector<TransactionOutput> getOutputs() const
-    {
-        return outputs;
-    }
-
-    double calculateTotalInputValue() const
-    {
-        double totalInputValue = 0.0;
-        for (const auto &input : inputs)
-        {
-            throw std::runtime_error("Not implemented");
-        }
-        return totalInputValue;
-    }
-
-    double calculateTotalOutputValue() const
-    {
-        double totalOutputValue = 0.0;
-        for (const auto &output : outputs)
-        {
-            totalOutputValue += output.getValue();
-        }
-        return totalOutputValue;
-    }
-
-    std::string toString() const
-    {
-        std::string result = "Transaction:\n";
-
-        result += "Inputs:\n";
-        for (const auto &input : inputs)
-        {
-            result += "PrevTxId: " + input.getPrevTxId() + ", Vout: " + std::to_string(input.getVout()) + ", ScriptSig: " + input.getScriptSig() + "\n";
-        }
-
-        result += "Outputs:\n";
-        for (const auto &output : outputs)
-        {
-            result += "Value: " + std::to_string(output.getValue()) + ", ScriptPubKey: " + output.getScriptPubKey() + "\n";
-        }
-
-        return result;
-    }
-
-private:
-    std::vector<TransactionInput> inputs;
-    std::vector<TransactionOutput> outputs;
+    double value;
+    std::string scriptSig;
 };
 
-Transaction parseTransactionFromJson(const std::string &jsonFilePath)
+// single input, one or more outputs
+class Transaction
 {
-    std::ifstream file(jsonFilePath);
-    if (!file.is_open())
-    {
-        throw std::runtime_error("Failed to open JSON file.");
+private:
+    const double fee = 0.1;
+    bool isFinalized = false;
+    bool isAdjusted = false;
+
+    void adjustOutputsForFee() {
+        isAdjusted = true;
+        if (vout.empty()) {
+            std::cerr << "No outputs to adjust for fee." << std::endl;
+            return;
+        }
+
+        double feePerOutput = fee / vout.size();
+
+        for (auto& output : vout) {
+            if (output.value > feePerOutput) {
+                output.value -= feePerOutput;
+            } else {
+                std::cerr << "Output value is too small to cover the fee portion." << std::endl;
+                return;
+            }
+        }
     }
 
-    std::string str((std::istreambuf_iterator<char>(file)), std::istreambuf_iterator<char>());
+public:
+    std::string txid;
+    TransactionInput vin;
+    std::vector<TransactionOutput> vout;
+    Transaction(const std::string &tx_id, double inputValue, const std::string &inputScript)
+        : txid(tx_id), vin{inputValue, inputScript} {}
 
-    boost::json::value jv = boost::json::parse(str);
-    boost::json::object jsonData = jv.as_object();
-
-    std::vector<TransactionInput> inputs;
-    std::vector<TransactionOutput> outputs;
-
-    for (const auto &inputVal : jsonData["inputs"].as_array())
-    {
-        boost::json::object input = inputVal.as_object();
-        std::string prevTxId = input["prevTxId"].as_string().c_str();
-        int vout = input["vout"].as_int64();
-        std::string scriptSig = input["scriptSig"].as_string().c_str();
-        inputs.emplace_back(prevTxId, vout, scriptSig);
+    void addOutput(const double value, const std::string& scriptPubKey) {
+        TransactionOutput newOutput{value, scriptPubKey};
+        vout.push_back(newOutput);
     }
 
-    for (const auto &outputVal : jsonData["outputs"].as_array())
-    {
-        boost::json::object output = outputVal.as_object();
-        double value = output["value"].as_double();
-        std::string scriptPubKey = output["scriptPubKey"].as_string().c_str();
-        outputs.emplace_back(value, scriptPubKey);
+    bool validate() {
+        double totalOutputValue = 0.0;
+        for (const auto& output : vout) {
+            totalOutputValue += output.value;
+        }
+
+        // Check if the input amount is enough to cover the outputs and the fee
+        if (vin.value < totalOutputValue + fee) {
+            std::cerr << "Invalid transaction: Input amount is insufficient." << std::endl;
+            return false;
+        }
+
+        // Transaction is valid
+        return true;
     }
 
-    return Transaction(inputs, outputs);
-}
+    void finalize_transaction() {
+        if (isFinalized) {
+            std::cerr << "Transaction is already finalized." << std::endl;
+            return;
+        }
+
+        adjustOutputsForFee();
+        isFinalized = true;
+    }
+};
