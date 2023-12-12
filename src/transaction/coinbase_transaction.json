@@ -1,15 +1,70 @@
 {
-    "inputs": [
-        {
-            "prevTxId": "previousTxId1",
-            "vout": 0,
-            "scriptSig": "scriptSig1"
-        }
-    ],
-    "outputs": [
-        {
-            "value": 10.0,
-            "scriptPubKey": "scriptPubKey1"
-        }
-    ]
+    "0": {
+        "transactions": [
+            {
+                "id": "0",
+                "inputs": [
+                    {
+                        "from": "0x0000000000000",
+                        "amount": "0.3 SPC"
+                    }
+                ],
+                "outputs": [
+                    {
+                        "to": "0xFEDCBA987654321",
+                        "amount": "0.3 SPC"
+                    }
+                ],
+                "timestamp": "2023-12-10T09:30:00Z"
+            },
+            {
+                "id": "1",
+                "inputs": [
+                    {
+                        "from": "0x111111111111111",
+                        "amount": "1.0 SPC"
+                    },
+                    {
+                        "from": "0x222222222222222",
+                        "amount": "1.0 SPC"
+                    }
+                ],
+                "outputs": [
+                    {
+                        "to": "0x333333333333333",
+                        "amount": "0.95 SPC"
+                    },
+                    {
+                        "to": "0x444444444444444",
+                        "amount": "0.95 SPC"
+                    }
+                ],
+                "timestamp": "2023-12-11T15:45:00Z"
+            },
+            {
+                "id": "2",
+                "inputs": [
+                    {
+                        "from": "0x555555555555555",
+                        "amount": "50.0 SPC"
+                    },
+                    {
+                        "from": "0x666666666666666",
+                        "amount": "60.0 SPC"
+                    }
+                ],
+                "outputs": [
+                    {
+                        "to": "0x777777777777777",
+                        "amount": "79.9272727273 SPC"
+                    },
+                    {
+                        "to": "0x888888888888888",
+                        "amount": "29.9727272727 SPC"
+                    }
+                ],
+                "timestamp": "2023-12-12T08:15:00Z"
+            }
+        ]
+    }
 }
