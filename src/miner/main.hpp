@@ -12,6 +12,24 @@
 #include <network/p2p.hpp>
 #include <blockchain/block.hpp>
 #include <blockchain/chain.hpp>
+#include <transaction/transaction.hpp>
+
+std::vector<Transaction> getTransactionsFromMempool() {
+    std::vector<Transaction> transactions;
+
+    std::ifstream file("src/transaction/mempool.json");
+    std::string str((std::istreambuf_iterator<char>(file)),
+                    std::istreambuf_iterator<char>());
+
+    std::istringstream iss(str);
+    std::string line;
+
+    while (std::getline(iss, line)) {
+        transactions.push_back(Transaction::parseTransactionFromJson(line));
+    }
+
+    return transactions;
+}
 
 class Main {
 private:
@@ -87,7 +105,6 @@ public:
             block.setPrehash(chain.getLastHash());
 
             block.mineBlock(); // mine block & check if already mined
-
             // grab transactions from mempool
                 // block.addTransaction(Transaction::parseTransactionFromJson("src/transaction/mempool.json"));
                 // for input address in transaction
@@ -96,6 +113,11 @@ public:
                 // merkle_root = MerkleTree(block.getTransactions()).getRoot();
                 // block.setMerkleRoot(merkle_root);
             // set block immutable
+
+            // std::vector<Transaction> transactions = getTransactionsFromMempool();
+            // for transaction in transactions
+                // block.finalizeTransaction();
+                // block.addTransaction(transaction);
 
             if (chain.add(block))
                 std::cout << block.toString() << std::endl;
