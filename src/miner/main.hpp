@@ -90,6 +90,9 @@ public:
 
             // grab transactions from mempool
                 // block.addTransaction(Transaction::parseTransactionFromJson("src/transaction/mempool.json"));
+                // for input address in transaction
+                    // check balance, if balance < transaction.value
+                        // remove transaction from block
                 // merkle_root = MerkleTree(block.getTransactions()).getRoot();
                 // block.setMerkleRoot(merkle_root);
             // set block immutable
