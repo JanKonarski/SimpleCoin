@@ -88,6 +88,25 @@ public:
         return totalOutputValue;
     }
 
+    std::string toString() const
+    {
+        std::string result = "Transaction:\n";
+
+        result += "Inputs:\n";
+        for (const auto &input : inputs)
+        {
+            result += "PrevTxId: " + input.getPrevTxId() + ", Vout: " + std::to_string(input.getVout()) + ", ScriptSig: " + input.getScriptSig() + "\n";
+        }
+
+        result += "Outputs:\n";
+        for (const auto &output : outputs)
+        {
+            result += "Value: " + std::to_string(output.getValue()) + ", ScriptPubKey: " + output.getScriptPubKey() + "\n";
+        }
+
+        return result;
+    }
+
 private:
     std::vector<TransactionInput> inputs;
     std::vector<TransactionOutput> outputs;
