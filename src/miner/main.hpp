@@ -87,6 +87,12 @@ public:
             block.setPrehash(chain.getLastHash());
             block.mineBlock();
 
+            // grab transactions from mempool
+            // add them to block
+            // calculate merkle root
+            // add merkle root to block
+            // broadcast block
+
             if (chain.add(block))
                 std::cout << block.toString() << std::endl;
 
