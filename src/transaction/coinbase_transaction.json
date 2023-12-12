@@ -21,12 +21,8 @@
                 "id": "1",
                 "inputs": [
                     {
-                        "from": "0x111111111111111",
-                        "amount": "1.0 SPC"
-                    },
-                    {
-                        "from": "0x222222222222222",
-                        "amount": "1.0 SPC"
+                        "from": "0xFEDCBA987654321",
+                        "amount": "2.0 SPC"
                     }
                 ],
                 "outputs": [
@@ -45,22 +41,22 @@
                 "id": "2",
                 "inputs": [
                     {
-                        "from": "0x555555555555555",
-                        "amount": "50.0 SPC"
+                        "from": "0x333333333333333",
+                        "amount": "0.5 SPC"
                     },
                     {
-                        "from": "0x666666666666666",
-                        "amount": "60.0 SPC"
+                        "from": "0x444444444444444",
+                        "amount": "0.5 SPC"
                     }
                 ],
                 "outputs": [
                     {
                         "to": "0x777777777777777",
-                        "amount": "79.9272727273 SPC"
+                        "amount": "0.45 SPC"
                     },
                     {
                         "to": "0x888888888888888",
-                        "amount": "29.9727272727 SPC"
+                        "amount": "0.45 SPC"
                     }
                 ],
                 "timestamp": "2023-12-12T08:15:00Z"
