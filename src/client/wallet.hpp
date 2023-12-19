@@ -21,6 +21,7 @@ public:
     bool DeriveSeedFromWords();
     bool GenerateECDSAKeyPair();
     Transaction sendToken(const Transaction::Input &input, const std::vector<Transaction::Output> &outputs);
+    double CalculateBalance(const std::string &pubkey, const std::vector<std::vector<Transaction>> &transactions);
 
     const std::string &GetPrivateKey() const;
     const std::string &GetPublicKey() const;
@@ -37,6 +38,7 @@ private:
     CryptoPP::ECDSA<CryptoPP::ECP, CryptoPP::SHA256>::PublicKey ecPublicKey_;
     std::string privateKey_;
     std::string publicKey_;
+    std::map<std::time_t, double> balance_;
     void sendTransaction(const Transaction &transaction);
 };
 

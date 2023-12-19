@@ -112,6 +112,35 @@ Transaction Wallet::sendToken(const Transaction::Input &input, const std::vector
     sendTransaction(transaction);
     return transaction;
 }
+
+double Wallet::CalculateBalance(const std::string &pubkey, const std::vector<std::vector<Transaction>> &transactions)
+{
+    double balance = 0.0;
+
+    for (const auto &transactionBlock : transactions)
+    {
+        for (const auto &transaction : transactionBlock)
+        {
+            // Add the amounts from outputs that match the pubkey
+            for (const auto &output : transaction.outputs)
+            {
+                if (output.pubkey == pubkey)
+                {
+                    balance += output.amount;
+                }
+            }
+
+            // Subtract the amount from input if it matches the pubkey
+            if (transaction.input.pubkey == pubkey)
+            {
+                balance -= transaction.input.amount;
+            }
+        }
+    }
+    this->balance_[std::time(nullptr)] = balance;
+    return balance;
+}
+
 const std::string &Wallet::GetPrivateKey() const
 {
     return privateKey_;
@@ -122,12 +151,14 @@ const std::string &Wallet::GetPublicKey() const
     return publicKey_;
 }
 
-int main() {
+int main()
+{
     // Step 1: Create a Wallet instance
     Wallet myWallet("wordlist.txt"); // Replace with actual wordlist file name or modify the constructor
 
     // Step 2: Generate ECDSA key pair
-    if (!myWallet.GenerateECDSAKeyPair()) {
+    if (!myWallet.GenerateECDSAKeyPair())
+    {
         std::cerr << "Failed to generate ECDSA key pair." << std::endl;
         return 1;
     }
@@ -136,8 +167,7 @@ int main() {
     Transaction::Input input = {"publicKey1", 100.0};
     std::vector<Transaction::Output> outputs = {
         {"publicKey2", 50.0},
-        {"publicKey3", 50.0}
-    };
+        {"publicKey3", 50.0}};
 
     // Step 3 and 4: Create and sign the transaction
     Transaction lastTransaction = myWallet.sendToken(input, outputs);
@@ -145,11 +175,14 @@ int main() {
     // Step 5: Dump transaction to JSON
     std::string json = lastTransaction.toJson();
     std::ofstream jsonFile("transaction.json");
-    if (jsonFile.is_open()) {
+    if (jsonFile.is_open())
+    {
         jsonFile << json;
         jsonFile.close();
         std::cout << "Transaction JSON has been written to 'transaction.json'" << std::endl;
-    } else {
+    }
+    else
+    {
         std::cerr << "Unable to open file for writing." << std::endl;
     }
 

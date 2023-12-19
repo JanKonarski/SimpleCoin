@@ -94,6 +94,8 @@ public:
 
         return json;
     }
+    Input input;
+    std::vector<Output> outputs;
 
 private:
     std::string createDataStringForSigning()
@@ -108,9 +110,6 @@ private:
         data += std::to_string(timestamp);
         return data;
     }
-
-    Input input;
-    std::vector<Output> outputs;
     std::time_t timestamp;
     std::string signature;
     std::string hash;
