@@ -6,11 +6,14 @@
 #include <iomanip>
 #include <cryptopp/sha.h>
 #include <cryptopp/hex.h>
+#include "transaction.hpp"
+#include "merkle.hpp"
 
 class Block {
 private:
     std::string previous_hash = "0000000000000000000000000000000000000000000000000000000000000000";
     std::string merkle_hash = "7d8cc9cfffdbd88014588602d42cc8bb58704966b5c5454deb14499b5a9f0207";
+    std::vector<Transaction> transactions;
     unsigned int time;
     unsigned int difficulty = 5;
     unsigned int nonce = 0;
