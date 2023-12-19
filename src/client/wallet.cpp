@@ -98,9 +98,8 @@ void Wallet::sendTransaction(const Transaction &transaction)
     std::cout << "Transaction sent: " << transaction.toJson() << std::endl;
 }
 
-Transaction Wallet::sendToken(const Transaction::Input &input, const std::vector<Transaction::Output> &outputs)
+Transaction Wallet::sendToken(Transaction transaction)
 {
-    Transaction transaction(input, outputs);
     CryptoPP::ECDSA<CryptoPP::ECP, CryptoPP::SHA256>::PrivateKey privateKey;
     CryptoPP::ByteQueue queue;
     queue.Put(reinterpret_cast<const CryptoPP::byte *>(privateKey_.data()), privateKey_.size());
@@ -170,10 +169,11 @@ int main()
         {"publicKey3", 50.0}};
 
     // Step 3 and 4: Create and sign the transaction
-    Transaction lastTransaction = myWallet.sendToken(input, outputs);
-
+    // Transaction transaction = Transaction(input, outputs);
+    std::string transaction_json = "{\"input\": {\"pubkey\": \"publicKey1\",\"amount\": 100.000000},\"outputs\": [{\"pubkey\": \"publicKey2\",\"amount\": 50.000000},{\"pubkey\": \"publicKey3\",\"amount\": 50.000000}],\"timestamp\": 1702999667,\"signature\": \"94C3CB32FEA49E93088E74B7C3CE4B3D08C8F7672018D46EA0BC1FBECB68CD8B73AB8FAFD6A18107028A0E8FBBF5806684E2E26EA10D87895B83D12C4AB4CC24\"}";
+    Transaction transaction(transaction_json);
     // Step 5: Dump transaction to JSON
-    std::string json = lastTransaction.toJson();
+    std::string json = transaction.toJson();
     std::ofstream jsonFile("transaction.json");
     if (jsonFile.is_open())
     {

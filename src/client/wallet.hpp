@@ -20,7 +20,7 @@ public:
     bool SelectRandomWords(size_t count);
     bool DeriveSeedFromWords();
     bool GenerateECDSAKeyPair();
-    Transaction sendToken(const Transaction::Input &input, const std::vector<Transaction::Output> &outputs);
+    Transaction sendToken(Transaction transaction);
     double CalculateBalance(const std::vector<std::vector<Transaction>> &transactions);
 
     const std::string &GetPrivateKey() const;

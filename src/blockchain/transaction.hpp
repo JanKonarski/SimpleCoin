@@ -10,6 +10,7 @@
 #include <cryptopp/osrng.h>
 #include <cryptopp/eccrypto.h>
 #include <cryptopp/ecp.h>
+#include <boost/json.hpp>
 
 class Transaction
 {
@@ -29,6 +30,38 @@ public:
     Transaction(const Input &input, const std::vector<Output> &outputs)
         : input(input), outputs(outputs), timestamp(std::time(nullptr))
     {
+    }
+
+    Transaction(const std::string in_pubkey, const double amount, const std::string out_pubkey)
+    {
+        input.pubkey = in_pubkey;
+        input.amount = amount;
+        Output output;
+        output.pubkey = out_pubkey;
+        output.amount = amount;
+        outputs.push_back(output);
+        timestamp = std::time(nullptr);
+    }
+
+    Transaction(const std::string &json)
+    {
+        boost::json::value jv = boost::json::parse(json);
+        boost::json::object jo = jv.as_object();
+
+        input.pubkey = jo["input"].as_object().at("pubkey").as_string().c_str();
+        input.amount = jo["input"].as_object().at("amount").as_double();
+
+        boost::json::array outputsArray = jo["outputs"].as_array();
+        for (const auto &output : outputsArray)
+        {
+            Output out;
+            out.pubkey = output.as_object().at("pubkey").as_string().c_str();
+            out.amount = output.as_object().at("amount").as_double();
+            outputs.push_back(out);
+        }
+
+        timestamp = std::time(nullptr);
+        createDataStringForSigning(); // This will set .hash field of the class
     }
 
     std::string getHash(std::string data) const
