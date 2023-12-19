@@ -113,7 +113,7 @@ Transaction Wallet::sendToken(const Transaction::Input &input, const std::vector
     return transaction;
 }
 
-double Wallet::CalculateBalance(const std::string &pubkey, const std::vector<std::vector<Transaction>> &transactions)
+double Wallet::CalculateBalance(const std::vector<std::vector<Transaction>> &transactions)
 {
     double balance = 0.0;
 
@@ -124,14 +124,14 @@ double Wallet::CalculateBalance(const std::string &pubkey, const std::vector<std
             // Add the amounts from outputs that match the pubkey
             for (const auto &output : transaction.outputs)
             {
-                if (output.pubkey == pubkey)
+                if (output.pubkey == this->publicKey_)
                 {
                     balance += output.amount;
                 }
             }
 
             // Subtract the amount from input if it matches the pubkey
-            if (transaction.input.pubkey == pubkey)
+            if (transaction.input.pubkey == this->publicKey_)
             {
                 balance -= transaction.input.amount;
             }

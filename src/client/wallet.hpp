@@ -21,7 +21,7 @@ public:
     bool DeriveSeedFromWords();
     bool GenerateECDSAKeyPair();
     Transaction sendToken(const Transaction::Input &input, const std::vector<Transaction::Output> &outputs);
-    double CalculateBalance(const std::string &pubkey, const std::vector<std::vector<Transaction>> &transactions);
+    double CalculateBalance(const std::vector<std::vector<Transaction>> &transactions);
 
     const std::string &GetPrivateKey() const;
     const std::string &GetPublicKey() const;
