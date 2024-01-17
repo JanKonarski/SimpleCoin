@@ -1,32 +1,31 @@
 #pragma once
 
 #include <string>
+#include <cstring>
 
-struct Message {
-    enum MessageType {
-        NANE
-    ,   PEER_LIST_REQUEST
-    ,   PEER_LIST_RESPONSE
-    ,   KEY_EXCHANGE
-    ,   BLOCK
-    ,   CONTROL_MESSAGE
-    ,   CLOSE
-    };
-
-    MessageType type;
-    char data[1024*1024];
-
-    Message() {
-        std::fill(data, data + sizeof(data), '\0');
-    }
+enum MessageType{
+    TRANSACTION_TRANSFER
+,   TRANSACTION_REQUEST
+,   BLOCK_TRANSFER
+,   BLOCK_REQUEST
+,   CHAIN_TRANSFER
+,   CHAIN_REQUEST
+,   CHAIN_SYNC
+,   NULL_RESPONSE
 };
 
-class Protocol {
-private:
+struct Message {
+    MessageType type;
+    char data[1024*16];
 
+    Message() {
+        std::fill(data, data + sizeof(data), '\n');
+    }
 
-public:
-    Protocol() {}
-
-
+    Message(MessageType type, std::string msg="")
+    : type(type)
+    {
+        Message();
+        strcpy(data, msg.c_str());
+    }
 };

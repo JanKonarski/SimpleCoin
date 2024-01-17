@@ -1,19 +1,19 @@
 #pragma once
 
-#include <chrono>
 #include <string>
-#include <sstream>
-#include <iomanip>
 #include <cryptopp/sha.h>
 #include <cryptopp/hex.h>
 
+#include <config.hpp>
+#include <blockchain/merkle.hpp>
+
 class Block {
-private:
-    std::string previous_hash = "0000000000000000000000000000000000000000000000000000000000000000";
-    std::string merkle_hash = "7d8cc9cfffdbd88014588602d42cc8bb58704966b5c5454deb14499b5a9f0207";
-    unsigned int time;
-    unsigned int difficulty = 5;
-    unsigned int nonce = 0;
+public:
+    std::string previous_hash;
+    Merkle merkle_tree;
+    std::time_t timestamp;
+    int difficulty = DIFFICULTY;
+    int nonce = 0;
 
     int countZeros(std::string text) {
         return std::count(text.begin(), std::find_if(text.begin(),
@@ -24,28 +24,28 @@ private:
     }
 
 public:
-
-    /* New block */
-    Block()
+    Block(Merkle merkle_tree,
+          std::string previous_hash = "0000000000000000000000000000000000000000000000000000000000000000")
+    : previous_hash(previous_hash),
+      merkle_tree(merkle_tree)
     {
-        auto now = std::chrono::system_clock::now();
-        time = std::chrono::duration_cast<std::chrono::nanoseconds>(now.time_since_epoch()).count();
-    }
+        timestamp = std::time(nullptr);
+    };
 
-    void setPrehash(std::string pre_hash) {
-        previous_hash = pre_hash;
-    }
+    Block(std::string json) {
+        std::istringstream is(json);
+        boost::property_tree::ptree ptree;
+        boost::property_tree::json_parser::read_json(is, ptree);
 
-    /* Block from network worker */
-    Block(std::string str_block) {
-        previous_hash = str_block.substr(0, 64);
-        merkle_hash = str_block.substr(64, 64);
+        previous_hash = ptree.get<std::string>("previous");
+        timestamp = ptree.get<long>("timestamp");
+        difficulty = ptree.get<int>("difficulty");
+        nonce = ptree.get<int>("nonce");
 
-        size_t pos;
-
-        time = std::stoul(str_block.substr(128, 8), &pos, 16);
-        difficulty = std::stoul(str_block.substr(136, 8), &pos, 16);
-        nonce = std::stoul(str_block.substr(144, 8), &pos, 16);
+        boost::property_tree::ptree merkle_ptree = ptree.get_child("merkle");
+        std::ostringstream merkle_json;
+        boost::property_tree::json_parser::write_json(merkle_json, merkle_ptree);
+        merkle_tree = Merkle(merkle_json.str());
     }
 
     std::string getHash() {
@@ -65,13 +65,13 @@ public:
     }
 
     void mineBlock() {
-        while (countZeros(getHash()) != difficulty)
+        while (countZeros(getHash()) != DIFFICULTY)
             ++nonce;
     }
 
     std::string toString() {
         std::stringstream ss;
-        ss << previous_hash << merkle_hash <<
+        ss << previous_hash << merkle_tree.getHash() <<
            std::setfill('0') << std::setw(8) << std::hex << time <<
            std::setfill('0') << std::setw(8) << std::hex << difficulty <<
            std::setfill('0') << std::setw(8) << std::hex <<nonce;
@@ -79,23 +79,30 @@ public:
         return ss.str();
     }
 
-    std::string getPrevious() {
-        return previous_hash;
+    bool verify() {
+        return countZeros(getHash()) == difficulty;
     }
 
-    std::string getMerkle() {
-        return merkle_hash;
+    std::string toJson() {
+        boost::property_tree::ptree ptree;
+
+        ptree.put("previous", previous_hash);
+        ptree.put("timestamp", timestamp);
+        ptree.put("difficulty", difficulty);
+        ptree.put("nonce", nonce);
+
+        boost::property_tree::ptree merkle_ptree;
+        std::istringstream is(merkle_tree.toJson());
+        boost::property_tree::json_parser::read_json(is, merkle_ptree);
+        ptree.put_child("merkle", merkle_ptree);
+
+        std::ostringstream os;
+        boost::property_tree::json_parser::write_json(os, ptree);
+
+        return os.str();
     }
 
-    unsigned int getTime() {
-        return time;
-    }
-
-    unsigned int getDifficulty() {
-        return difficulty;
-    }
-
-    unsigned int getNonce() {
-        return nonce;
+    bool find(Transaction transaction) {
+        return merkle_tree.find(transaction);
     }
 };

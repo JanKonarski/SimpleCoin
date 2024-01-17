@@ -1,3 +1,9 @@
 #pragma once
 
-#define PORT 28180
+#define MINER_PORT 25500
+#define CLIENT_PORT 25505
+#define DIFFICULTY 3
+#define MIN_WAIT_RAND 50
+#define MAX_WAIT_RAND 5000
+
+#define CLIENT_VALIDATION

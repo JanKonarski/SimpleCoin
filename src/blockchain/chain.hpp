@@ -1,7 +1,9 @@
 #pragma once
 
+#include <string>
 #include <vector>
-#include <boost/property_tree/ptree.hpp>
+#include <cryptopp/sha.h>
+#include <cryptopp/hex.h>
 #include <boost/property_tree/json_parser.hpp>
 
 #include <blockchain/block.hpp>
@@ -11,58 +13,117 @@ public:
     std::vector<Block> chain;
 
 public:
-    Chain() {
-    }
+    Chain() {}
 
-    Chain(std::string json_chain) {
-        std::istringstream iss(json_chain);
+    Chain(std::string json) {
+        std::istringstream is(json);
         boost::property_tree::ptree ptree;
-        boost::property_tree::json_parser::read_json(iss, ptree);
+        boost::property_tree::json_parser::read_json(is, ptree);
 
-        for (const auto& text_block : ptree.get_child("chain")) {
-            std::string text = text_block.second.get_value<std::string>();
-            Block block(text);
+        for (auto item : ptree.get_child("blocks")) {
+            boost::property_tree::ptree block_ptree = item.second;
+            std::ostringstream block_json;
+            boost::property_tree::json_parser::write_json(block_json, block_ptree);
 
-            if (!add(block))
-                throw std::runtime_error("Invalid block in chain import");
+            Block block(block_json.str());
+            chain.push_back(block);
         }
     }
 
+    std::string toJson() {
+        boost::property_tree::ptree ptree;
+
+        boost::property_tree::ptree array;
+        for (auto block : chain) {
+            std::istringstream block_json(block.toJson());
+            boost::property_tree::ptree block_ptree;
+            boost::property_tree::json_parser::read_json(block_json, block_ptree);
+            array.push_back(std::make_pair("", block_ptree));
+        }
+        ptree.put_child("blocks", array);
+
+        std::ostringstream os;
+        boost::property_tree::json_parser::write_json(os, ptree);
+
+        return os.str();
+    }
+
+    std::string getHash() {
+        std::string data;
+        for (auto block : chain)
+            data += block.getHash();
+
+        CryptoPP::SHA256 sha256;
+
+        std::string hash;
+        CryptoPP::StringSource(data, true,
+            new CryptoPP::HashFilter(sha256,
+                new CryptoPP::HexEncoder(
+                    new CryptoPP::StringSink(hash))));
+
+        std::transform(hash.begin(), hash.end(), hash.begin(), ::tolower);
+
+        return hash;
+    }
+
     bool add(Block block) {
+        if (!block.verify())
+            return false;
+
         if (chain.empty()) {
-            if (block.getPrevious() != "0000000000000000000000000000000000000000000000000000000000000000")
+            if (block.previous_hash != "0000000000000000000000000000000000000000000000000000000000000000")
                 return false;
 
             chain.push_back(block);
             return true;
-        } else if (chain.back().getHash() == block.getPrevious()) {
-            chain.push_back(block);
-            return true;
         }
 
-        return false;
-    }
+        if (chain.back().getHash() != block.previous_hash)
+            return false;
 
-    std::string toString() {
-        boost::property_tree::ptree ptree;
+        for (auto transaction : block.merkle_tree.transactions) {
+            if (!transaction.valid())
+                return false;
 
-        for (size_t i=0; i<chain.size(); i++) {
-            std::string position("chain.block");
-            position += i;
+            for (auto chain_block : chain) {
+                auto chain_it = std::find_if(chain_block.merkle_tree.transactions.begin(),
+                                             chain_block.merkle_tree.transactions.end(),
+                                             [&transaction](Transaction chain_transaction){
+                                                 return transaction.getHash() == chain_transaction.getHash();
+                                             });
 
-            ptree.put(position, chain[i].toString());
+                if (chain_it != chain_block.merkle_tree.transactions.end())
+                    return false;
+            }
         }
 
-        std::ostringstream oss;
-        boost::property_tree::json_parser::write_json(oss, ptree);
-        return oss.str();
+        chain.push_back(block);
+        return true;
     }
 
-    std::string getLastHash() {
-        if (chain.empty())
-            return "0000000000000000000000000000000000000000000000000000000000000000";
+    bool verify() {
+        for (auto block : chain)
+            if (!block.verify())
+                return false;
 
-        else
-            return chain.back().getHash();
+        return true;
+    }
+
+    bool find(Transaction transaction) {
+        auto block_it = std::find_if(chain.begin(), chain.end(),
+                                     [&transaction](Block block){
+            return block.find(transaction);
+        });
+
+        return block_it != chain.end();
+    }
+
+    std::string getLast() {
+        std::string last = "0000000000000000000000000000000000000000000000000000000000000000";
+
+        if (!chain.empty())
+            last = chain.back().getHash();
+
+        return last;
     }
 };
